@@ -1,18 +1,27 @@
 import json
+from pathlib import Path
 
-with open("E:/Skill Rank/task/eg5.json", "r", encoding="utf-8") as f:
-    eg5 = json.load(f)
+data_file = Path(__file__).with_name("eg5.json")
 
-for donut in eg5:
-    if donut.get("name") == "Old Fashioned":
-        batters_list = donut["batters"]["batter"]
+try:
+    with open(data_file, "r", encoding="utf-8") as file:
+        donut_data = json.load(file)
 
-        if not any(b["type"] == "Tea" for b in batters_list):
-            batters_list.append({"id": "1003", "type": "Tea"})  
-        break
+    for donut in donut_data:
+        if donut.get("name") == "Old Fashioned":
+            batters = donut["batters"]["batter"]
+            if not any(b.get("type") == "Tea" for b in batters):
+                batters.append({"id": "1009", "type": "Tea"})
+            break
 
+    with open(data_file, "w", encoding="utf-8") as file:
+        json.dump(donut_data, file, indent=2, ensure_ascii=False)
 
-with open("E:/Skill Rank/task/eg5.json", "w", encoding="utf-8") as f:
-    json.dump(eg5, f, indent=2, ensure_ascii=False)
+    print('Tea batter added to "Old Fashioned" and file updated.')
 
-print('"Tea" batter added to Old Fashioned donut!')
+except FileNotFoundError:
+    print(f"Error: {data_file.name} not found.")
+except json.JSONDecodeError:
+    print("Error: Invalid JSON format.")
+except Exception as e:
+    print(f"Unexpected error: {e}")
