@@ -1,27 +1,39 @@
 import json
-from pathlib import Path
+from pymongo import MongoClient, errors
+import os
+from dotenv import load_dotenv
 
-data_file = Path(__file__).with_name("eg5.json")
+load_dotenv() 
+
+user = os.getenv("MONGO_USER")
+password = os.getenv("MONGO_PASS")
+db_name = os.getenv("MONGO_DB")
+cluster = os.getenv("MONGO_CLUSTER")
 
 try:
-    with open(data_file, "r", encoding="utf-8") as file:
-        donut_data = json.load(file)
+    client = MongoClient(f"mongodb+srv://{user}:{password}@{cluster}.mongodb.net/{db_name}?retryWrites=true&w=majority")
+    db = client[db_name]
+    collection = db["donuts"]
 
-    for donut in donut_data:
-        if donut.get("name") == "Old Fashioned":
-            batters = donut["batters"]["batter"]
-            if not any(b.get("type") == "Tea" for b in batters):
-                batters.append({"id": "1009", "type": "Tea"})
-            break
+    with open("E:/Skill Rank/task/eg5.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
 
-    with open(data_file, "w", encoding="utf-8") as file:
-        json.dump(donut_data, file, indent=2, ensure_ascii=False)
+    if isinstance(data, list):
+        collection.insert_many(data)
+    else:
+        collection.insert_one(data)
 
-    print('Tea batter added to "Old Fashioned" and file updated.')
+    print("Data inserted into MongoDB!")
 
 except FileNotFoundError:
-    print(f"Error: {data_file.name} not found.")
+    print("Error: JSON file not found.")
+
 except json.JSONDecodeError:
     print("Error: Invalid JSON format.")
+
+except errors.ConnectionFailure as e:
+    print(f"MongoDB connection failed: {e}")
+
 except Exception as e:
     print(f"Unexpected error: {e}")
+

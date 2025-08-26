@@ -1,32 +1,69 @@
+from flask import Flask, request, jsonify
+from pymongo import MongoClient, errors
+import os
+from dotenv import load_dotenv
 
-from flask import Flask, jsonify
-import json
-from pathlib import Path
+load_dotenv()  
 
 app = Flask(__name__)
 
+try:
+    user = os.getenv("MONGO_USER")
+    password = os.getenv("MONGO_PASS")
+    db_name = os.getenv("MONGO_DB")
+    cluster = os.getenv("MONGO_CLUSTER")
 
-data_file = Path(__file__).with_name("eg5.json")
+    client = MongoClient(f"mongodb+srv://{user}:{password}@{cluster}.mongodb.net/{db_name}?retryWrites=true&w=majority&appName=Cluster0")
+    db = client[db_name]
+    collection = db["donuts"]   
+except errors.ConnectionFailure as e:
+    print(f"MongoDB connection failed: {e}")
+    collection = None
 
 
-@app.route("/api/helloWorld", methods=["GET"])
-def hello_world():
-    return jsonify({"message": "Hello World"})
-
-
-@app.route("/api/json", methods=["GET"])
-def get_json():
+@app.route("/api/donuts", methods=["GET"])
+def get_donuts():
     try:
-        with open(data_file, "r", encoding="utf-8") as file:
-            data = json.load(file)
-        return jsonify(data)
-    except FileNotFoundError:
-        return jsonify({"error": f"{data_file.name} not found"}), 404
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid JSON format"}), 500
+        donuts = list(collection.find({}, {"_id": 0}))
+        return jsonify(donuts), 200
     except Exception as e:
-        return jsonify({"error": f"Unexpected error: {e}"}), 500
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/donuts", methods=["POST"])
+def add_donut():
+    try:
+        data = request.json
+        collection.insert_one(data)
+        return jsonify({"msg": "Donut added!"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/donuts/<name>", methods=["PUT"])
+def update_donut(name):
+    try:
+        data = request.json
+        result = collection.update_one({"name": name}, {"$set": data})
+        if result.matched_count:
+            return jsonify({"msg": f"{name} updated!"}), 200
+        else:
+            return jsonify({"error": "Donut not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/donuts/<name>", methods=["DELETE"])
+def delete_donut(name):
+    try:
+        result = collection.delete_one({"name": name})
+        if result.deleted_count:
+            return jsonify({"msg": f"{name} deleted!"}), 200
+        else:
+            return jsonify({"error": "Donut not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(debug=True)
