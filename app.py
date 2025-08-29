@@ -8,17 +8,15 @@ load_dotenv()
 app = Flask(__name__)
 
 try:
-    user = os.getenv("MONGO_USER")
-    password = os.getenv("MONGO_PASS")
-    db_name = os.getenv("MONGO_DB")
-    cluster = os.getenv("MONGO_CLUSTER")
+    mongo_uri = os.getenv("MONGO_URI")  
+    client = MongoClient(mongo_uri)
 
-    client = MongoClient(f"mongodb+srv://{user}:{password}@{cluster}.mongodb.net/{db_name}?retryWrites=true&w=majority&appName=Cluster0")
-    db = client[db_name]
-    collection = db["donuts"]   
+    db = client["donutsdb"]
+    collection = db["donuts"]
 except errors.ConnectionFailure as e:
     print(f"MongoDB connection failed: {e}")
     collection = None
+
 
 
 @app.route("/api/donuts", methods=["GET"])
